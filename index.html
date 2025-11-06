@@ -1,116 +1,167 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Indian Swing Trader — Live (.NS)</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <style>
-    :root{--bg:#ffffff;--muted:#374151;--accent:#059669}
-    body{font-family:Inter,system-ui,Arial;margin:12px;background:var(--bg);color:#0f172a}
-    header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    h1{margin:0;font-size:20px}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
-    select,input,button,textarea{padding:8px;border-radius:8px;border:1px solid #e6eef6}
-    button{background:var(--accent);color:white;border:none;cursor:pointer}
-    #card{background:white;padding:12px;border-radius:10px;box-shadow:0 8px 30px rgba(2,6,23,0.06);margin-top:12px}
-    #summary{margin-top:10px;color:var(--muted)}
-    #msg{margin-top:10px;color:#b91c1c}
-    @media (max-width:600px){ canvas{height:300px!important} }
-    .small{font-size:13px;color:var(--muted)}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{background:#f1f5f9;padding:6px 10px;border-radius:10px}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Indian Swing Trader — Proxy (Recommended)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#fbfbfd;--card:#fff;--muted:#475569;--accent:#0ea5a4}
+  body{font-family:Inter,system-ui,Arial;margin:12px;background:var(--bg);color:#0f172a}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{margin:0;font-size:20px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  select,input,button,textarea{padding:8px;border-radius:8px;border:1px solid #e6eef6}
+  button{background:var(--accent);color:white;border:none;cursor:pointer}
+  #card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 8px 30px rgba(2,6,23,0.06);margin-top:12px}
+  #summary{margin-top:10px;color:var(--muted)}
+  #msg{margin-top:10px;color:#b91c1c}
+  .small{font-size:13px;color:var(--muted)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn-ghost{background:#eef2f7;color:#0f172a}
+  @media (max-width:720px){ canvas{height:320px!important} .row{gap:6px} }
+  pre{white-space:pre-wrap;background:#0b1220;color:#cbd5e1;padding:10px;border-radius:6px;margin-top:8px}
+</style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>Indian Swing Trader — Live (.NS)</h1>
-      <div class="small">Auto-refresh every 10s. Default: <strong>TATASTEEL.NS</strong>. Uses public proxy to avoid CORS.</div>
-    </div>
-    <div style="margin-left:auto" class="small">Streaming: <span id="streamStatus">ON</span></div>
-  </header>
+<header>
+  <div>
+    <h1>Indian Swing Trader — Proxy Mode</h1>
+    <div class="small">Default: <strong>TATASTEEL.NS</strong>. Uses public relay proxy to avoid CORS.</div>
+  </div>
+  <div style="margin-left:auto" class="small">Proxy: <code>api.allorigins.win</code></div>
+</header>
 
-  <div class="row controls" style="margin-top:10px">
-    <label for="symbol">Symbol</label>
-    <select id="symbol" aria-label="symbol"></select>
+<!-- Controls -->
+<div class="row controls">
+  <label for="sectorFilter" class="small">Sector</label>
+  <select id="sectorFilter">
+    <option value="ALL">All</option>
+    <option value="Metals">Metals</option>
+    <option value="Energy">Energy</option>
+    <option value="Finance">Finance</option>
+    <option value="IT">IT</option>
+    <option value="Auto">Automobile</option>
+    <option value="Ports">Ports</option>
+  </select>
 
-    <label for="tf">Timeframe</label>
-    <select id="tf">
-      <option value="1d" selected>Daily</option>
-      <option value="1wk">Weekly</option>
-      <option value="1mo">Monthly</option>
-    </select>
+  <label class="small">Symbol</label>
+  <select id="symbol"></select>
 
-    <button id="analyze">Analyze</button>
-    <button id="topPicks">Top Picks</button>
-    <div style="margin-left:auto" class="pill small">Live interval: <input id="liveSec" value="10" style="width:60px; margin-left:6px" /> sec</div>
+  <label class="small">Timeframe</label>
+  <select id="tf"><option value="1d">Daily</option><option value="1wk">Weekly</option><option value="1mo">Monthly</option></select>
+
+  <button id="refreshBtn">Refresh Now</button>
+  <button id="startAuto" class="btn-ghost">Start Auto</button>
+  <button id="stopAuto" class="btn-ghost" disabled>Stop Auto</button>
+
+  <label class="small">Interval (sec)</label>
+  <input id="intervalSec" type="number" value="10" min="5" style="width:70px" />
+</div>
+
+<!-- Main card -->
+<div id="card">
+  <canvas id="chart" style="width:100%;height:420px"></canvas>
+  <div id="summary" class="small">No analysis yet.</div>
+  <div id="msg"></div>
+
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <button id="exportPNG">Export PNG</button>
+    <button id="exportCSV">Export CSV</button>
+    <button id="runBacktest" class="btn-ghost">Run Backtest</button>
+    <button id="openScreener" class="btn-ghost">Open Screener</button>
+    <input id="tgWebhook" placeholder="Telegram webhook (optional)" style="flex:1;min-width:200px;padding:8px;border-radius:8px;border:1px solid #e6eef6" />
+    <button id="tgTest">Test Alert</button>
   </div>
 
-  <div id="card">
-    <canvas id="chart" style="width:100%;height:420px"></canvas>
-    <div id="summary" class="small">No data yet.</div>
-    <div id="msg"></div>
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-      <button id="exportPNG">Export PNG</button>
-      <button id="exportCSV">Export CSV</button>
-      <input id="tgWebhook" placeholder="Telegram webhook (optional)" style="flex:1;min-width:200px;padding:8px;border-radius:8px;border:1px solid #e6eef6" />
-      <button id="testAlert">Test Alert</button>
+  <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
+    <div style="flex:1" class="card-section">
+      <h4 style="margin:4px 0">Position Sizer</h4>
+      <div class="small">Account value: <input id="acctVal" type="number" value="100000" style="width:120px" /></div>
+      <div class="small">Risk %: <input id="riskPct" type="number" value="1" style="width:80px" /></div>
+      <div style="margin-top:8px"><button id="calcPos">Calc Size</button></div>
+      <pre id="posOut" style="height:90px;overflow:auto">—</pre>
+    </div>
+
+    <div style="width:320px" class="card-section">
+      <h4 style="margin:4px 0">Quick Scanner</h4>
+      <div class="small">Symbols (one per line)</div>
+      <textarea id="scanList" style="width:100%;height:120px">TATASTEEL.NS
+TATAMOTORS.NS
+ONGC.NS
+CDSL.NS
+RELIANCE.NS
+HDFCBANK.NS
+ICICIBANK.NS
+INFY.NS
+TCS.NS
+SBIN.NS
+ADANIPORTS.NS
+POWERGRID.NS
+BHARTIARTL.NS</textarea>
+      <div style="margin-top:8px"><button id="runScan">Run Scan</button></div>
+      <div id="scanOut" class="small" style="max-height:180px;overflow:auto"></div>
     </div>
   </div>
+
+  <div id="backtestOut" style="margin-top:12px"></div>
+</div>
 
 <script>
-/* ---------- Configuration ---------- */
+/* ---------- Configuration: symbols + sectors ---------- */
 const SYMBOLS = [
-  "TATASTEEL.NS",
-  "TATAMOTORS.NS",
-  "ONGC.NS",
-  "CDSL.NS",
-  "RELIANCE.NS",
-  "HDFCBANK.NS",
-  "ICICIBANK.NS",
-  "INFY.NS",
-  "TCS.NS",
-  "SBIN.NS",
-  "ADANIPORTS.NS",
-  "POWERGRID.NS",
-  "BHARTIARTL.NS"
+  { sym: 'TATASTEEL.NS', label: 'Tata Steel', sector:'Metals' },
+  { sym: 'TATAMOTORS.NS', label: 'Tata Motors', sector:'Auto' },
+  { sym: 'ONGC.NS', label: 'ONGC', sector:'Energy' },
+  { sym: 'CDSL.NS', label: 'CDSL', sector:'Finance' },
+  { sym: 'RELIANCE.NS', label: 'Reliance', sector:'Energy' },
+  { sym: 'HDFCBANK.NS', label: 'HDFC Bank', sector:'Finance' },
+  { sym: 'ICICIBANK.NS', label: 'ICICI Bank', sector:'Finance' },
+  { sym: 'INFY.NS', label: 'Infosys', sector:'IT' },
+  { sym: 'TCS.NS', label: 'TCS', sector:'IT' },
+  { sym: 'SBIN.NS', label: 'SBI', sector:'Finance' },
+  { sym: 'ADANIPORTS.NS', label: 'Adani Ports', sector:'Ports' },
+  { sym: 'POWERGRID.NS', label: 'PowerGrid', sector:'Energy' },
+  { sym: 'BHARTIARTL.NS', label: 'Bharti Airtel', sector:'Telecom' }
 ];
-const DEFAULT = "TATASTEEL.NS";
-const ALLORIGINS = "https://api.allorigins.win/raw?url="; // public proxy (no-key)
+const DEFAULT = 'TATASTEEL.NS';
+const PROXY = 'https://api.allorigins.win/raw?url='; // public proxy for Yahoo
 
-/* ---------- Helpers ---------- */
+/* ---------- Utility helpers ---------- */
 const $ = id => document.getElementById(id);
-const showMsg = (t) => { $('msg').textContent = t || ''; console.debug('MSG:', t); }
-function fmt(n){ return (typeof n==='number')? n.toFixed(2) : n; }
+function fmt(n){ return (typeof n === 'number') ? n.toFixed(2) : n; }
+function showMsg(t){ $('msg').textContent = t || ''; console.debug('MSG:', t); }
 
-/* ---------- UI init ---------- */
-function populateSymbols(){
+/* ---------- Populate symbol list & sector filter behavior ---------- */
+function populateSymbolDropdown(filter='ALL'){
   const sel = $('symbol');
   sel.innerHTML = '';
-  for(const s of SYMBOLS){
-    const o = document.createElement('option'); o.value = s; o.text = s.replace('.NS','');
-    if(s===DEFAULT) o.style.fontWeight='700';
-    sel.appendChild(o);
-  }
+  SYMBOLS.filter(s=> filter==='ALL' || s.sector===filter).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.sym; opt.text = s.label + ' (' + s.sym.replace('.NS','') + ')';
+    if(s.sym === DEFAULT) opt.style.fontWeight = '700';
+    sel.appendChild(opt);
+  });
   sel.value = localStorage.getItem('lastSym') || DEFAULT;
 }
-populateSymbols();
+$('sectorFilter').addEventListener('change', (e)=> populateSymbolDropdown(e.target.value));
+populateSymbolDropdown();
 
-/* ---------- Yahoo fetch via proxy ---------- */
-async function fetchYahooProxy(symbol, range='6mo', interval='1d'){
-  const base = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
-  const proxyUrl = ALLORIGINS + encodeURIComponent(base);
-  const res = await fetch(proxyUrl);
-  if(!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
-  const j = await res.json();
-  if(!j || !j.chart || !j.chart.result) throw new Error('No result from Yahoo');
-  return j.chart.result[0];
+/* ---------- Yahoo via proxy fetch ---------- */
+async function fetchYahoo(symbol, range='6mo', interval='1d'){
+  // Yahoo endpoint (public) -> proxied
+  const yahoo = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
+  const url = PROXY + encodeURIComponent(yahoo);
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Proxy HTTP ' + res.status);
+  const json = await res.json();
+  if(!json || !json.chart || !json.chart.result) throw new Error('No data from Yahoo');
+  return json.chart.result[0];
 }
 
-/* ---------- Indicators (simple implementations) ---------- */
+/* ---------- Indicators ---------- */
 function ema(values, period){
-  const out=[]; const k = 2/(period+1);
+  const out=[]; const k=2/(period+1);
   for(let i=0;i<values.length;i++){
     if(i===0) out.push(values[0]);
     else out.push(values[i]*k + out[i-1]*(1-k));
@@ -118,156 +169,233 @@ function ema(values, period){
   for(let i=0;i<period-1 && i<out.length;i++) out[i]=null;
   return out;
 }
-function sma(values,period){ const out=[]; for(let i=0;i<values.length;i++){ if(i+1<period) out.push(null); else out.push(values.slice(i+1-period,i+1).reduce((a,b)=>a+b,0)/period); } return out; }
-function rsi(prices,period=14){ const out=[]; for(let i=0;i<prices.length;i++){ if(i<period) out.push(null); else{ let g=0,l=0; for(let j=i-period+1;j<=i;j++){ const d = prices[j]-prices[j-1]; if(d>0) g+=d; else l+=Math.abs(d);} const avgG=g/period, avgL=l/period; const rs = avgL===0?100:avgG/avgL; out.push(100-(100/(1+rs))); }} return out; }
-function macd(prices){ const e12=ema(prices,12), e26=ema(prices,26); const macdLine = prices.map((p,i)=> (e12[i]!=null && e26[i]!=null) ? e12[i]-e26[i] : null); const signal = ema(macdLine.map(v=>v==null?0:v),9).map((v,i)=> macdLine[i]==null?null:v); const hist = macdLine.map((v,i)=> v==null||signal[i]==null?null:v-signal[i]); return {macdLine,signal,hist}; }
+function rsi(prices, period=14){
+  const out=[]; for(let i=0;i<prices.length;i++){ if(i<period) out.push(null); else{ let gains=0, losses=0; for(let j=i-period+1;j<=i;j++){ const d = prices[j]-prices[j-1]; if(d>0) gains+=d; else losses+=Math.abs(d); } const avgG=gains/period, avgL=losses/period; const rs = avgL===0 ? 100 : avgG/avgL; out.push(100 - (100/(1+rs))); }} return out;
+}
+function macd(prices){
+  const e12 = ema(prices,12), e26 = ema(prices,26);
+  const macdLine = prices.map((v,i)=> e12[i]!=null && e26[i]!=null ? e12[i]-e26[i] : null);
+  const signal = ema(macdLine.map(v=>v==null?0:v),9).map((v,i)=> macdLine[i]==null?null:v);
+  const hist = macdLine.map((v,i)=> v==null||signal[i]==null?null:v-signal[i]);
+  return {macdLine, signal, hist};
+}
 
 /* ---------- Charting ---------- */
 let CHART = null;
-function drawChart(labels, close, ema21, ema50, buys, sells){
+function drawChart(labels, close, ema21, ema50, buyMarkers=[], sellMarkers=[]){
   const ctx = $('chart').getContext('2d');
   if(CHART) CHART.destroy();
-  const datasets = [{label:'Close', data:close, borderColor:'#ef4444', tension:0.2, pointRadius:0}];
-  if(ema21) datasets.push({label:'EMA21', data:ema21, borderColor:'#10b981', pointRadius:0});
-  if(ema50) datasets.push({label:'EMA50', data:ema50, borderColor:'#2563eb', pointRadius:0});
-  if(buys && buys.length) datasets.push({label:'Buys', data: buys.map(b=>({x:b.date,y:b.price})), showLine:false, pointRadius:6, pointBackgroundColor:'#10b981', parsing:{xAxisKey:'x',yAxisKey:'y'}});
-  if(sells && sells.length) datasets.push({label:'Sells', data: sells.map(s=>({x:s.date,y:s.price})), showLine:false, pointRadius:6, pointBackgroundColor:'#ef4444', parsing:{xAxisKey:'x',yAxisKey:'y'}});
-  CHART = new Chart(ctx, { type:'line', data:{ labels, datasets }, options:{ interaction:{mode:'index',intersect:false}, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:false}} } });
+  const datasets = [{ label: 'Close', data: close, borderColor:'#ef4444', tension:0.2, pointRadius:0 }];
+  if(ema21) datasets.push({ label:'EMA21', data: ema21, borderColor:'#10b981', pointRadius:0 });
+  if(ema50) datasets.push({ label:'EMA50', data: ema50, borderColor:'#2563eb', pointRadius:0 });
+  if(buyMarkers.length) datasets.push({ label:'Buys', data: buyMarkers.map(b=>({x:b.date,y:b.price})), showLine:false, pointRadius:6, pointBackgroundColor:'#10b981', parsing:{xAxisKey:'x', yAxisKey:'y'} });
+  if(sellMarkers.length) datasets.push({ label:'Sells', data: sellMarkers.map(s=>({x:s.date,y:s.price})), showLine:false, pointRadius:6, pointBackgroundColor:'#ef4444', parsing:{xAxisKey:'x', yAxisKey:'y'} });
+
+  CHART = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: { interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:true} }, scales:{ y:{ beginAtZero:false } } }
+  });
 }
 
-/* ---------- Analysis core ---------- */
-let lastResult = null;
-async function analyzeOnce(){
+/* ---------- Core analyze function ---------- */
+let LAST = null;
+async function analyzeFresh(){
   showMsg('');
   const symbol = $('symbol').value;
   localStorage.setItem('lastSym', symbol);
   const tf = $('tf').value;
-  const range = (tf==='1d')?'6mo':(tf==='1wk'?'2y':'5y');
-  const interval = (tf==='1d')?'1d':(tf==='1wk'?'1wk':'1mo');
+  const range = (tf==='1d') ? '6mo' : (tf==='1wk' ? '2y' : '5y');
+  const interval = (tf==='1d') ? '1d' : (tf==='1wk' ? '1wk' : '1mo');
+
   $('summary').textContent = 'Loading...';
   try{
-    const raw = await fetchYahooProxy(symbol, range, interval);
-    const timestamps = raw.timestamp || [];
-    const q = raw.indicators && raw.indicators.quote && raw.indicators.quote[0];
-    if(!q || !q.close) throw new Error('No quote data available');
-    const close = q.close;
-    const highs = q.high || [];
-    const lows = q.low || [];
-    const dates = timestamps.map(t=> new Date(t*1000).toLocaleDateString());
-    // indicators
-    const e21 = ema(close,21), e50 = ema(close,50), rsiA = rsi(close,14), mac = macd(close);
-    // buy/sell markers (simple EMA21 breakout)
+    const data = await fetchYahoo(symbol, range, interval);
+    const timestamps = (data.timestamp || []).map(t => new Date(t*1000).toLocaleDateString());
+    const q = data.indicators && data.indicators.quote && data.indicators.quote[0];
+    if(!q || !q.close) throw new Error('No quote data');
+    const close = q.close, high = q.high||[], low = q.low||[], open = q.open||[], volume = q.volume||[];
+    // compute indicators
+    const ema21 = ema(close,21), ema50 = ema(close,50), rsiA = rsi(close,14), mac = macd(close);
+    // find buy/sell markers (basic EMA21 breakout rules)
     const buys = [], sells = [];
     for(let i=1;i<close.length;i++){
-      if(e21[i] && e21[i-1] && close[i-1] <= e21[i-1] && close[i] > e21[i]) buys.push({i, date:dates[i], price:close[i]});
-      if(e21[i] && e21[i-1] && close[i-1] >= e21[i-1] && close[i] < e21[i]) sells.push({i, date:dates[i], price:close[i]});
+      if(ema21[i] && ema21[i-1] && close[i-1] <= ema21[i-1] && close[i] > ema21[i]) buys.push({i, date: timestamps[i], price: close[i]});
+      if(ema21[i] && ema21[i-1] && close[i-1] >= ema21[i-1] && close[i] < ema21[i]) sells.push({i, date: timestamps[i], price: close[i]});
     }
-    drawChart(dates, close, e21, e50, buys.slice(-6), sells.slice(-6));
-    // produce actionable suggestion for last bar
+
+    drawChart(timestamps, close, ema21, ema50, buys.slice(-6), sells.slice(-6));
+
+    // evaluate last bar
     const lastIdx = close.length-1;
     const lastPrice = close[lastIdx];
-    const lastE21 = e21[lastIdx], lastE50 = e50[lastIdx];
+    const lastE21 = ema21[lastIdx], lastE50 = ema50[lastIdx];
     let action = 'HOLD', reasons = [];
-    if(lastE21 && lastE50 && lastPrice > lastE21 && lastE21>lastE50) { action='BUY'; reasons.push('Price > EMA21 and EMA21 > EMA50'); }
-    if(lastE21 && lastPrice < lastE21) { action='SELL'; reasons.push('Price < EMA21'); }
-    if(buys.length && buys[buys.length-1].i === lastIdx) { action='STRONG BUY'; reasons.push('Recent EMA21 breakout'); }
-    // compute ATR for stop suggestion (approx via highs/lows)
-    let atrVal = null;
-    if(highs.length>20 && lows.length>20){
+    if(lastE21 && lastE50 && lastPrice > lastE21 && lastE21 > lastE50) { action = 'BUY'; reasons.push('Price > EMA21 and EMA21>EMA50'); }
+    if(lastE21 && lastPrice < lastE21) { action = 'SELL'; reasons.push('Price < EMA21'); }
+    if(buys.length && buys[buys.length-1].i === lastIdx) { action = 'STRONG BUY'; reasons.push('EMA21 breakout'); }
+
+    // ATR approximate for stoploss
+    let atr = null;
+    if(high.length>20 && low.length>20){
       const tr = [];
       for(let i=1;i<close.length;i++){
-        const trv = Math.max( (highs[i]-lows[i])||0, Math.abs(highs[i] - close[i-1])||0, Math.abs(lows[i] - close[i-1])||0 );
+        const trv = Math.max( (high[i]-low[i])||0, Math.abs(high[i]-close[i-1])||0, Math.abs(low[i]-close[i-1])||0 );
         tr.push(trv);
       }
-      const recent = tr.slice(-14);
-      atrVal = recent.reduce((a,b)=>a+b,0)/recent.length;
+      const recent = tr.slice(-14); atr = recent.reduce((a,b)=>a+b,0)/recent.length;
     }
-    // targets & stop loss
     const atrMult = 2;
-    const stop = atrVal ? (lastPrice - atrVal*atrMult) : (lastPrice*0.98);
-    const t1 = atrVal ? (lastPrice + atrVal*1) : (lastPrice*1.02);
-    const t2 = atrVal ? (lastPrice + atrVal*2) : (lastPrice*1.04);
-    $('summary').innerHTML = `<b>${symbol}</b> · Last ${fmt(lastPrice)} · Action: <strong>${action}</strong><br>
+    const stop = atr ? (lastPrice - atr*atrMult) : lastPrice*0.98;
+    const target1 = atr ? (lastPrice + atr*1) : lastPrice*1.02;
+    const target2 = atr ? (lastPrice + atr*2) : lastPrice*1.04;
+
+    $('summary').innerHTML = `<b>${symbol}</b> · Last: ${fmt(lastPrice)} · Action: <strong>${action}</strong><br>
       Reasons: ${reasons.join(' · ') || 'None'}<br>
-      Targets: ${fmt(t1)} / ${fmt(t2)} · Stop: ${fmt(stop)} ${atrVal?('(ATR '+fmt(atrVal)+')'):''}`;
-    lastResult = { symbol, close, dates, buys, sells, lastPrice, stop, t1, t2 };
+      Targets: ${fmt(target1)} / ${fmt(target2)} · Stop: ${fmt(stop)} ${atr?('(ATR '+fmt(atr)+')'):''}`;
+
+    LAST = { symbol, timestamps, close, high, low, open, volume, buys, sells, lastPrice, stop, target1, target2, ema21, ema50, rsiA, mac };
     showMsg('');
-    return lastResult;
+    return LAST;
   }catch(err){
-    console.error('Analyze error', err);
+    console.error(err);
     $('summary').textContent = 'No data';
-    showMsg('Error fetching or parsing data: ' + err.message + ' — try Live Server or wait and retry.');
+    showMsg('Error: ' + (err.message || err));
     return null;
   }
 }
 
-/* ---------- Live streaming ---------- */
-let liveTimer = null;
-async function startLive(){
-  stopLive();
-  const sec = Math.max(5, Number($('liveSec').value) || 10);
-  $('streamStatus').textContent = `ON (every ${sec}s)`;
-  // immediate run
-  await analyzeOnce();
-  liveTimer = setInterval(analyzeOnce, sec*1000);
+/* ---------- Auto-refresh management (manual control) ---------- */
+let AUTO_TIMER = null;
+function startAuto(){
+  stopAuto();
+  const sec = Math.max(5, Number($('intervalSec').value) || 10);
+  $('startAuto').disabled = true; $('stopAuto').disabled = false;
+  $('summary').textContent = `Auto-refresh every ${sec}s...`;
+  // run immediately then schedule
+  analyzeFresh().catch(e=>console.warn(e));
+  AUTO_TIMER = setInterval(()=> analyzeFresh().catch(e=>console.warn(e)), sec*1000);
 }
-function stopLive(){ if(liveTimer) clearInterval(liveTimer); liveTimer = null; $('streamStatus').textContent = 'OFF'; }
+function stopAuto(){
+  if(AUTO_TIMER) clearInterval(AUTO_TIMER);
+  AUTO_TIMER = null;
+  $('startAuto').disabled = false; $('stopAuto').disabled = true;
+  $('summary').textContent = 'Auto stopped.';
+}
 
-/* ---------- Small utilities ---------- */
+/* ---------- Export PNG / CSV ---------- */
 function exportPNG(){
-  if(!CHART) { alert('No chart'); return; }
+  if(!CHART){ alert('No chart'); return; }
   const url = $('chart').toDataURL('image/png');
-  const a = document.createElement('a'); a.href = url; a.download = (lastResult?.symbol || 'chart') + '.png'; a.click();
+  const a = document.createElement('a'); a.href = url; a.download = (LAST?.symbol||'chart') + '.png'; a.click();
 }
 function exportCSV(){
-  if(!lastResult){ alert('Run analysis'); return; }
+  if(!LAST){ alert('Run analysis first'); return; }
   const rows = [['date','close','signal']];
-  for(let i=0;i<lastResult.dates.length;i++){
+  for(let i=0;i<LAST.timestamps.length;i++){
     let sig = '';
-    if(lastResult.buys.find(b=>b.i===i)) sig='BUY';
-    if(lastResult.sells.find(s=>s.i===i)) sig='SELL';
-    rows.push([lastResult.dates[i], lastResult.close[i], sig]);
+    if(LAST.buys.find(b=>b.i===i)) sig='BUY';
+    if(LAST.sells.find(s=>s.i===i)) sig='SELL';
+    rows.push([LAST.timestamps[i], LAST.close[i], sig]);
   }
-  const csv = rows.map(r=> r.map(c=>`"${c}"`).join(',')).join('\n');
-  const blob = new Blob([csv],{type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (lastResult?.symbol||'signals') + '_signals.csv'; a.click();
-}
-async function sendTestAlert(){
-  const w = $('tgWebhook').value.trim();
-  if(!w) return alert('Paste Telegram webhook URL (bot sendMessage URL) to test.');
-  try{ await fetch(w, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text: `Test alert from Swing Lab for ${$('symbol').value}`})}); alert('Test sent'); }catch(e){ alert('Alert failed: '+e.message); }
+  const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (LAST?.symbol||'signals') + '_signals.csv'; a.click();
 }
 
-/* ---------- Top picks (quick) ---------- */
-async function topPicks(){
-  showMsg('');
-  $('summary').textContent = 'Computing top picks...';
-  try{
-    const results = [];
-    for(const s of SYMBOLS){
-      try{
-        const r = await fetchYahooProxy(s,'3mo','1d');
-        const close = r.indicators.quote[0].close; const last = close[close.length-1];
-        results.push({sym:s, last});
-      }catch(e){ console.warn('skip', s, e.message); }
+/* ---------- Position size calc ---------- */
+function calcPosition(){
+  if(!LAST){ alert('Run analysis first'); return; }
+  const acct = Number($('acctVal').value || 100000);
+  const riskPct = Number($('riskPct').value || 1)/100;
+  const price = LAST.lastPrice;
+  const atrApprox = LAST.stop ? Math.abs(price - LAST.stop)/2 : price*0.02;
+  const stop = LAST.stop || price*(1-0.02);
+  const riskPerShare = Math.abs(price - stop);
+  if(riskPerShare <= 0){ $('posOut').textContent = 'Invalid stop/price'; return; }
+  const qty = Math.floor((acct * riskPct) / riskPerShare);
+  $('posOut').textContent = `Price: ${fmt(price)}\nStop: ${fmt(stop)}\nRisk/share: ${fmt(riskPerShare)}\nQty: ${qty}\nNotional: ${fmt(qty*price)}`;
+}
+
+/* ---------- Screener (simple) ---------- */
+async function runScan(){
+  const list = $('scanList').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  $('scanOut').textContent = 'Scanning...';
+  const out = [];
+  for(const s of list){
+    try{
+      const r = await fetchYahoo(s,'3mo','1d');
+      const close = r.indicators.quote[0].close;
+      const e21 = ema(close,21), e50 = ema(close,50);
+      const last = close[close.length-1];
+      let score = 0; if(e21[e21.length-1] > e50[e50.length-1]) score += 2;
+      out.push({ sym: s, price: last, score });
+    }catch(e){ out.push({ sym: s, price: null, score: 0, err: e.message }); }
+  }
+  out.sort((a,b)=>b.score-a.score);
+  $('scanOut').innerHTML = out.map(r => `<div><b>${r.sym}</b> - ${r.price?fmt(r.price):'N/A'} - score ${r.score}</div>`).join('');
+}
+
+/* ---------- Backtest (simple EMA21/50 + ATR stop) ---------- */
+function runBacktest(){
+  if(!LAST){ alert('Run analysis first'); return; }
+  const data = LAST.close, e21 = LAST.ema21, e50 = LAST.ema50;
+  let cash = 100000, pos = 0, trades = [];
+  for(let i=1;i<data.length;i++){
+    if(e21[i] && e50[i] && e21[i]>e50[i] && data[i]>e21[i] && pos===0){
+      // enter risking 1% (default)
+      const atrEst = Math.abs(LAST.lastPrice - LAST.stop)|| (data[i]*0.02);
+      const riskPct = 0.01;
+      const stop = data[i] - atrEst*2;
+      const riskPerShare = data[i]-stop;
+      const qty = Math.max(0, Math.floor((cash*riskPct)/riskPerShare));
+      if(qty>0){ pos = qty; cash -= qty*data[i]; trades.push({type:'BUY',price:data[i],qty,idx:i,stop}); }
     }
-    results.sort((a,b)=> ( (b.last||0) - (a.last||0) ));
-    $('summary').innerHTML = `<b>Top picks (by latest price):</b><br>` + results.slice(0,6).map(x=>`${x.sym} — ${fmt(x.last)}`).join('<br>');
-  }catch(e){ showMsg('Top picks failed: '+e.message); }
+    if(pos>0){
+      const stop = trades[trades.length-1].stop;
+      if(data[i] < stop){ cash += pos*data[i]; trades.push({type:'SELL',price:data[i],qty:pos,idx:i}); pos = 0; }
+    }
+  }
+  if(pos>0){ cash += pos * data[data.length-1]; trades.push({type:'SELL',price:data[data.length-1],qty:pos,idx:data.length-1}); pos=0; }
+  const pnl = cash - 100000;
+  $('backtestOut').innerHTML = `<pre>Trades: ${trades.length}\nP&L: ${fmt(pnl)}\n${JSON.stringify(trades,null,2)}</pre>`;
 }
 
-/* ---------- Wire UI ---------- */
-$('analyze').addEventListener('click', () => analyzeOnce());
-$('topPicks').addEventListener('click', topPicks);
+/* ---------- Telegram test ---------- */
+async function testTelegram(){
+  const w = $('tgWebhook').value.trim();
+  if(!w) return alert('Paste Telegram bot webhook sendMessage URL first');
+  try{
+    await fetch(w, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: `Test alert from Swing Lab for ${$('symbol').value}` })});
+    alert('Test alert sent (if webhook valid)');
+  }catch(e){
+    alert('Alert failed: '+e.message);
+  }
+}
+
+/* ---------- Wiring UI ---------- */
+$('refreshBtn').addEventListener('click', ()=> analyzeFresh());
+$('startAuto').addEventListener('click', startAuto);
+$('stopAuto').addEventListener('click', stopAuto);
 $('exportPNG').addEventListener('click', exportPNG);
 $('exportCSV').addEventListener('click', exportCSV);
-$('testAlert').addEventListener('click', sendTestAlert);
+$('calcPos').addEventListener('click', calcPosition);
+$('runScan').addEventListener('click', runScan);
+$('runBacktest').addEventListener('click', runBacktest);
+$('tgTest').addEventListener('click', testTelegram);
 
-/* ---------- Start live on load ---------- */
-window.addEventListener('load', () => {
-  populateSymbols();
-  // auto-run analyze + start live streaming
-  startLive().catch(e=>{ console.warn(e); showMsg('Live start error: '+e.message); });
+/* ---------- Init: auto-run and restore ---------- */
+window.addEventListener('load', async ()=> {
+  populateSymbolDropdown($('sectorFilter').value);
+  // if lastSym stored, select that
+  const saved = localStorage.getItem('lastSym');
+  if(saved) $('symbol').value = saved;
+  // initial analyze
+  await analyzeFresh();
 });
+
+/* ---------- Small safety: disable start if already running ---------- */
+window.addEventListener('beforeunload', ()=> stopAuto());
 </script>
 </body>
 </html>
