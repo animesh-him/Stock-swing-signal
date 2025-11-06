@@ -47,10 +47,10 @@
 <button id="analyzeBtn">Analyze</button>
 <button id="computeTopBtn" class="btn-ghost">Compute Top Pick</button>
 
-<label class="small">Ignore low volume below</label>
+<label class="small">Ignore low Ignore low volume below: 10000
 <input id="minVol" type="number" value="200000" style="width:110px" />
 
-<label class="small">Auto refresh</label>
+<label class="small"><!-- Auto refresh removed -->
 <input id="autoChk" type="checkbox" checked />
 <label class="small">Interval (sec)</label>
 <input id="intervalSec" type="number" value="10" style="width:80px" min="5" />
@@ -178,7 +178,7 @@ async function analyzeSymbol(symbol, tf='1d'){
   let atr = null;
   if(high.length>20 && low.length>20){ const tr=[]; for(let i=1;i<close.length;i++){ const trv = Math.max((high[i]-low[i])||0, Math.abs(high[i]-close[i-1])||0, Math.abs(low[i]-close[i-1])||0); tr.push(trv);} const recent = tr.slice(-14); atr = recent.reduce((a,b)=>a+b,0)/recent.length; }
   const lastIdx = close.length-1; const lastPrice = close[lastIdx]; const atrMult = 2; const stop = atr ? (lastPrice - atr*atrMult) : lastPrice*0.98; const target1 = atr ? (lastPrice + atr*1) : lastPrice*1.02; const target2 = atr ? (lastPrice + atr*2) : lastPrice*1.04;
-  return { symbol, timestamps, close, ema21, ema50, buys, sells, atr, lastPrice, stop, target1, target2, mac: m, latestVolume: q.volume ? q.volume[q.volume.length-1] : null };
+  return { symbol, timestamps, close, ema21, ema50, buys, sells, atr, lastPrice, stop, target1, target2, mac: m, latestVolume: q.Ignore low volume below: 10000
 }
 
 /* ---------- Buy strength score ---------- */
@@ -192,7 +192,7 @@ function buyStrengthScore(metrics){
   return (0.75 * upside) + (0.25 * macNorm);
 }
 
-/* ---------- Compute top pick across all symbols (ignores low volume) ---------- */
+/* ---------- Compute top pick across all symbols (ignores low Ignore low volume below: 10000
 async function computeTopPickAll(){
   showMsg('Computing top pick across all symbols — please wait...');
   const tf = $('tf').value;
@@ -201,15 +201,15 @@ async function computeTopPickAll(){
   for(const s of SYMBOLS){
     try{
       const r = await analyzeSymbol(s.sym, tf);
-      // ignore low volume if requested
-      if(minVol>0 && r.latestVolume!=null && r.latestVolume < minVol){ console.log('Skipping low volume', s.sym, r.latestVolume); continue; }
+      // ignore low Ignore low volume below: 10000
+      if(minVol>0 && r.latestVolume!=null && r.latestVolume < minVol){ console.log('Skipping low Ignore low volume below: 10000
       const upsidePct = r.target2 ? ((r.target2 - r.lastPrice)/r.lastPrice)*100 : 0;
       const downsidePct = r.stop ? ((r.lastPrice - r.stop)/r.lastPrice)*100 : 0;
       const score = buyStrengthScore(r);
       results.push({ sym: s.sym, label: s.label, metrics: r, upside: upsidePct, downside: downsidePct, score });
     }catch(e){ console.warn('skip', s.sym, e.message); }
   }
-  if(results.length===0){ showMsg('No symbols passed volume filter or fetch failed.'); return null; }
+  if(results.length===0){ showMsg('No symbols passed Ignore low volume below: 10000
   // sort by score desc
   results.sort((a,b)=> b.score - a.score);
   // render compare
@@ -272,11 +272,15 @@ ${JSON.stringify(trades,null,2)}</pre>`; }/* ---------- Telegram test ----------
 
 /* ---------- Wire UI ---------- */ $('computeTopBtn').addEventListener('click', ()=> computeTopPickAll()); $('analyzeBtn').addEventListener('click', analyzeSelected); $('refreshBtn').addEventListener('click', analyzeSelected); $('exportPNG').addEventListener('click', exportPNG); $('exportCSV').addEventListener('click', exportCSV); $('calcPos').addEventListener('click', calcPos); $('runScan').addEventListener('click', runScan); $('runBacktest').addEventListener('click', runBacktest); $('tgTest').addEventListener('click', testTelegram);
 
-/* ---------- Auto refresh ---------- / let AUTO_TIMER = null; function startAuto(){ if(AUTO_TIMER) clearInterval(AUTO_TIMER); const sec = Math.max(5, Number($('intervalSec').value) || 10); AUTO_TIMER = setInterval(()=> { computeTopPickAll().catch(()=>{}); }, sec1000); $('autoChk').checked = true; } function stopAuto(){ if(AUTO_TIMER) clearInterval(AUTO_TIMER); AUTO_TIMER = null; $('autoChk').checked = false; } $('autoChk').addEventListener('change', (e)=> { if(e.target.checked) startAuto(); else stopAuto(); });
+/* ---------- <!-- Auto refresh removed --> let AUTO_TIMER = null; function startAuto(){ if(AUTO_TIMER) clearInterval(AUTO_TIMER); const sec = Math.max(5, Number($('intervalSec').value) || 10); AUTO_TIMER = setInterval(()=> { computeTopPickAll().catch(()=>{}); }, sec*1000); $('autoChk').checked = true; } function stopAuto(){ if(AUTO_TIMER) clearInterval(AUTO_TIMER); AUTO_TIMER = null; $('autoChk').checked = false; } $('autoChk').addEventListener('change', (e)=> { if(e.target.checked) startAuto(); else stopAuto(); });
 
 /* ---------- Init on load ---------- / window.addEventListener('load', async ()=>{ populateSymbols(); const saved = localStorage.getItem('lastSym'); if(saved) $('symbol').value = saved; try{ const top = await computeTopPickAll(); if(top){ / already highlighted */ } }catch(e){ console.warn('topPick compute failed on load', e); } if($('autoChk').checked) startAuto(); });
 
 /* ---------- Cleanup ---------- */ window.addEventListener('beforeunload', ()=> stopAuto()); </script>
 
+<div id='proxyHealth'>Proxy: checking...</div>
+<script>
+// proxy health indicator code placeholder
+</script>
 </body>
 </html>
