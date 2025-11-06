@@ -1,10 +1,9 @@
 <!doctype html>
-
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Indian Swing Trader — Top Pick + Buy Strength</title>
+  <title>Indian Swing Trader — Manual Mode (Proxy Health)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root{--bg:#fbfbfd;--card:#fff;--muted:#475569;--accent:#0ea5a4}
@@ -30,73 +29,101 @@
     .top-card { padding:10px; border-radius:8px; background:#fff; box-shadow:0 6px 18px rgba(2,6,23,0.04); }
     table{width:100%;border-collapse:collapse;margin-top:8px}
     th,td{padding:6px;border-bottom:1px solid #eef2f7;text-align:left}
+    .proxy-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:middle; }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Indian Swing Trader — Top Pick + Buy Strength</h1>
-      <div class="small">Auto-selects Top Pick (highest upside). Use blink toggle to disable gold blinking. Proxy: api.allorigins.win</div>
+      <h1>Indian Swing Trader — Manual Mode</h1>
+      <div class="small">Manual refresh only. Proxy health indicator included. Default: <strong>TATASTEEL.NS</strong></div>
     </div>
-    <div style="margin-left:auto" class="small">Default: <strong>TATASTEEL.NS</strong></div>
-  </header>  <!-- Controls -->  <div class="row controls">
+    <div style="margin-left:auto" id="proxyHealth" class="small">
+      <span class="proxy-dot" id="proxyDot" style="background:#f59e0b"></span>
+      Proxy: <span id="proxyText">Checking...</span>
+      <button id="proxyCheckBtn" class="btn-ghost" style="margin-left:10px">Check Now</button>
+    </div>
+  </header>
+
+  <!-- Controls -->
+  <div class="row controls">
     <label class="small">Symbol</label>
-    <select id="symbol"></select><label class="small">Timeframe</label>
-<select id="tf"><option value="1d">Daily</option><option value="1wk">Weekly</option><option value="1mo">Monthly</option></select>
+    <select id="symbol"></select>
 
-<button id="analyzeBtn">Analyze</button>
-<button id="computeTopBtn" class="btn-ghost">Compute Top Pick</button>
+    <label class="small">Timeframe</label>
+    <select id="tf"><option value="1d">Daily</option><option value="1wk">Weekly</option><option value="1mo">Monthly</option></select>
 
-<label class="small">Ignore low Ignore low volume below: 10000
-<input id="minVol" type="number" value="200000" style="width:110px" />
+    <button id="analyzeBtn">Analyze</button>
+    <button id="computeTopBtn" class="btn-ghost">Compute Top Pick</button>
 
-<label class="small"><!-- Auto refresh removed -->
-<input id="autoChk" type="checkbox" checked />
-<label class="small">Interval (sec)</label>
-<input id="intervalSec" type="number" value="10" style="width:80px" min="5" />
+    <label class="small">Ignore low volume below</label>
+    <input id="minVol" type="number" value="0" style="width:110px" />
 
-<button id="blinkToggle" class="btn-ghost">Blink: ON</button>
+    <button id="blinkToggle" class="btn-ghost">Blink: ON</button>
+  </div>
 
-  </div>  <!-- Top pick row -->  <div class="top-row">
+  <!-- Top pick row -->
+  <div class="top-row">
     <div id="topPickCard" class="top-card">
       <div id="topPickTitle" style="font-weight:700">Top Pick: —</div>
       <div id="topPickDetails" class="small">No pick yet</div>
       <div id="blinkStatus" class="small" style="margin-top:6px;color:#92400e">Blinking ON</div>
-    </div><div style="flex:1" id="compareCard" class="top-card">
-  <div style="font-weight:700">Compare (All Stocks)</div>
-  <div id="compareOut" class="small">—</div>
-</div>
+    </div>
 
-  </div>  <!-- Main card -->  <div id="card">
-    <canvas id="chart" style="width:100%;height:420px"></canvas>
-    <div id="summary" class="small">No analysis yet.</div>
-    <div id="msg"></div><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-  <button id="refreshBtn" class="btn-ghost">Refresh Now</button>
-  <button id="exportPNG">Export PNG</button>
-  <button id="exportCSV">Export CSV</button>
-  <button id="runBacktest" class="btn-ghost">Backtest</button>
-  <input id="tgWebhook" placeholder="Telegram webhook (optional)" style="flex:1;min-width:200px;padding:8px;border-radius:8px;border:1px solid #e6eef6" />
-  <button id="tgTest">Test Alert</button>
-</div>
-
-<div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
-  <div style="flex:1">
-    <h4 style="margin:4px 0">Position Sizer</h4>
-    <div class="small">Account: <input id="acctVal" type="number" value="100000" style="width:120px" /></div>
-    <div class="small">Risk %: <input id="riskPct" type="number" value="1" style="width:80px" /></div>
-    <div style="margin-top:8px"><button id="calcPos">Calc Size</button></div>
-    <pre id="posOut" style="height:90px;overflow:auto">—</pre>
+    <div style="flex:1" id="compareCard" class="top-card">
+      <div style="font-weight:700">Compare (All Stocks)</div>
+      <div id="compareOut" class="small">—</div>
+    </div>
   </div>
 
-  <div style="width:360px">
-    <h4 style="margin:4px 0">Scanner</h4>
-    <textarea id="scanList" style="width:100%;height:120px">TATASTEEL.NS
+  <!-- Main card -->
+  <div id="card">
+    <canvas id="chart" style="width:100%;height:420px"></canvas>
+    <div id="summary" class="small">No analysis yet.</div>
+    <div id="msg"></div>
 
-TATAMOTORS.NS ONGC.NS CDSL.NS RELIANCE.NS HDFCBANK.NS ICICIBANK.NS INFY.NS TCS.NS SBIN.NS ADANIPORTS.NS POWERGRID.NS BHARTIARTL.NS</textarea> <div style="margin-top:8px"><button id="runScan">Run Scan</button></div> <div id="scanOut" class="small" style="max-height:180px;overflow:auto"></div> </div> </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button id="refreshBtn" class="btn-ghost">Refresh Now</button>
+      <button id="exportPNG">Export PNG</button>
+      <button id="exportCSV">Export CSV</button>
+      <button id="runBacktest" class="btn-ghost">Backtest</button>
+      <input id="tgWebhook" placeholder="Telegram webhook (optional)" style="flex:1;min-width:200px;padding:8px;border-radius:8px;border:1px solid #e6eef6" />
+      <button id="tgTest">Test Alert</button>
+    </div>
 
-<div id="backtestOut" style="margin-top:12px"></div>
+    <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1">
+        <h4 style="margin:4px 0">Position Sizer</h4>
+        <div class="small">Account: <input id="acctVal" type="number" value="100000" style="width:120px" /></div>
+        <div class="small">Risk %: <input id="riskPct" type="number" value="1" style="width:80px" /></div>
+        <div style="margin-top:8px"><button id="calcPos">Calc Size</button></div>
+        <pre id="posOut" style="height:90px;overflow:auto">—</pre>
+      </div>
 
-  </div><script>
+      <div style="width:360px">
+        <h4 style="margin:4px 0">Scanner</h4>
+        <textarea id="scanList" style="width:100%;height:120px">TATASTEEL.NS
+TATAMOTORS.NS
+ONGC.NS
+CDSL.NS
+RELIANCE.NS
+HDFCBANK.NS
+ICICIBANK.NS
+INFY.NS
+TCS.NS
+SBIN.NS
+ADANIPORTS.NS
+POWERGRID.NS
+BHARTIARTL.NS</textarea>
+        <div style="margin-top:8px"><button id="runScan">Run Scan</button></div>
+        <div id="scanOut" class="small" style="max-height:180px;overflow:auto"></div>
+      </div>
+    </div>
+
+    <div id="backtestOut" style="margin-top:12px"></div>
+  </div>
+
+<script>
 /* ---------- Configuration ---------- */
 const SYMBOLS = [
   { sym: 'TATASTEEL.NS', label:'Tata Steel' },
@@ -132,6 +159,31 @@ function populateSymbols(){
 }
 populateSymbols();
 
+/* ---------- Proxy health check ---------- */
+async function checkProxyHealth(){
+  const dot = $('proxyDot'), txt = $('proxyText');
+  txt.textContent = 'Checking...'; dot.style.background = '#f59e0b';
+  try{
+    // quick proxy check using a very small Yahoo call (1d)
+    const yahoo = `https://query1.finance.yahoo.com/v8/finance/chart/TATASTEEL.NS?range=1d&interval=1d`;
+    const url = PROXY + encodeURIComponent(yahoo);
+    const controller = new AbortController();
+    const timeout = setTimeout(()=> controller.abort(), 7000);
+    const res = await fetch(url, {signal: controller.signal});
+    clearTimeout(timeout);
+    if(!res.ok){ txt.textContent = 'Proxy error ' + res.status; dot.style.background = '#ef4444'; return; }
+    const j = await res.json().catch(()=>null);
+    if(!j || !j.chart || !j.chart.result){ txt.textContent = 'Proxy returns no result'; dot.style.background = '#ef4444'; return; }
+    // success
+    txt.textContent = 'Proxy OK'; dot.style.background = '#10b981';
+  }catch(err){
+    console.warn('proxy check failed', err);
+    txt.textContent = 'Proxy unreachable'; dot.style.background = '#ef4444';
+  }
+}
+$('proxyCheckBtn').addEventListener('click', checkProxyHealth);
+checkProxyHealth(); // initial check
+
 /* ---------- Yahoo via proxy ---------- */
 async function fetchYahoo(symbol, range='6mo', interval='1d'){
   const yahoo = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
@@ -145,7 +197,7 @@ async function fetchYahoo(symbol, range='6mo', interval='1d'){
 
 /* ---------- Indicators ---------- */
 function ema(values, period){ const out=[]; const k = 2/(period+1); for(let i=0;i<values.length;i++){ if(i===0) out.push(values[0]); else out.push(values[i]*k + out[i-1]*(1-k)); } for(let i=0;i<period-1 && i<out.length;i++) out[i]=null; return out; }
-function macd(prices){ const e12=ema(prices,12), e26=ema(prices,26); const macdLine = prices.map((v,i)=> e12[i]!=null && e26[i]!=null ? e12[i]-e26[i] : null); const signal = ema(macdLine.map(v=>v==null?0:v),9).map((v,i)=> macdLine[i]==null?null:v); return {macdLine, signal}; }
+function macd(prices){ const e12=ema(prices,12), e26=ema(prices,26); const macdLine = prices.map((v,i)=> e12[i]!=null && e26[i]!=null ? e12[i]-e26[i] : null); const signal = ema(macdLine.map(v=>v==null?0:v),9).map((v,i)=> macdLine[i]==null?null:v); const hist = macdLine.map((v,i)=> v==null||signal[i]==null?null:v-signal[i]); return {macdLine, signal, hist}; }
 
 /* ---------- Chart ---------- */
 let CHART = null;
@@ -178,21 +230,20 @@ async function analyzeSymbol(symbol, tf='1d'){
   let atr = null;
   if(high.length>20 && low.length>20){ const tr=[]; for(let i=1;i<close.length;i++){ const trv = Math.max((high[i]-low[i])||0, Math.abs(high[i]-close[i-1])||0, Math.abs(low[i]-close[i-1])||0); tr.push(trv);} const recent = tr.slice(-14); atr = recent.reduce((a,b)=>a+b,0)/recent.length; }
   const lastIdx = close.length-1; const lastPrice = close[lastIdx]; const atrMult = 2; const stop = atr ? (lastPrice - atr*atrMult) : lastPrice*0.98; const target1 = atr ? (lastPrice + atr*1) : lastPrice*1.02; const target2 = atr ? (lastPrice + atr*2) : lastPrice*1.04;
-  return { symbol, timestamps, close, ema21, ema50, buys, sells, atr, lastPrice, stop, target1, target2, mac: m, latestVolume: q.Ignore low volume below: 10000
+  // some Yahoo results have null volume arrays; treat null as high volume (do not filter them out)
+  const latestVolume = (q.volume && q.volume[q.volume.length-1] != null) ? q.volume[q.volume.length-1] : Number.MAX_SAFE_INTEGER;
+  return { symbol, timestamps, close, ema21, ema50, buys, sells, atr, lastPrice, stop, target1, target2, mac: m, latestVolume };
 }
 
 /* ---------- Buy strength score ---------- */
 function buyStrengthScore(metrics){
-  // score combines upside% (to target2) and momentum (recent MACD hist)
   const upside = metrics.target2 ? ((metrics.target2 - metrics.lastPrice) / metrics.lastPrice) * 100 : 0;
   let macHist = 0; try{ const hist = metrics.mac.hist; if(hist && hist.length>0) macHist = hist[hist.length-1]||0; }catch(e){}
-  // normalize macHist roughly (divide by price scale)
   const macNorm = metrics.lastPrice ? (macHist/metrics.lastPrice)*100 : 0;
-  // weight upside 0.75, momentum 0.25
   return (0.75 * upside) + (0.25 * macNorm);
 }
 
-/* ---------- Compute top pick across all symbols (ignores low Ignore low volume below: 10000
+/* ---------- Compute top pick across all symbols (ignores low volume) ---------- */
 async function computeTopPickAll(){
   showMsg('Computing top pick across all symbols — please wait...');
   const tf = $('tf').value;
@@ -201,15 +252,15 @@ async function computeTopPickAll(){
   for(const s of SYMBOLS){
     try{
       const r = await analyzeSymbol(s.sym, tf);
-      // ignore low Ignore low volume below: 10000
-      if(minVol>0 && r.latestVolume!=null && r.latestVolume < minVol){ console.log('Skipping low Ignore low volume below: 10000
+      // ignore low volume if requested (but treat missing volume as OK)
+      if(minVol>0 && r.latestVolume!=null && r.latestVolume < minVol){ console.log('Skipping low volume', s.sym, r.latestVolume); continue; }
       const upsidePct = r.target2 ? ((r.target2 - r.lastPrice)/r.lastPrice)*100 : 0;
       const downsidePct = r.stop ? ((r.lastPrice - r.stop)/r.lastPrice)*100 : 0;
       const score = buyStrengthScore(r);
       results.push({ sym: s.sym, label: s.label, metrics: r, upside: upsidePct, downside: downsidePct, score });
     }catch(e){ console.warn('skip', s.sym, e.message); }
   }
-  if(results.length===0){ showMsg('No symbols passed Ignore low volume below: 10000
+  if(results.length===0){ showMsg('No symbols passed volume filter or fetch failed.'); $('compareOut').textContent = '—'; return null; }
   // sort by score desc
   results.sort((a,b)=> b.score - a.score);
   // render compare
@@ -221,6 +272,7 @@ async function computeTopPickAll(){
 }
 
 /* ---------- Highlight top pick and auto-select ---------- */
+let enableBlink = true;
 function highlightTopPick(top){
   if(!top) return;
   const card = $('topPickCard');
@@ -252,35 +304,42 @@ async function analyzeSelected(){
 
 /* ---------- Exports, backtest, pos size ---------- */
 function exportPNG(){ if(!CHART){ alert('No chart'); return; } const url = $('chart').toDataURL('image/png'); const a = document.createElement('a'); a.href = url; a.download = (LAST?.symbol||'chart') + '.png'; a.click(); }
-function exportCSV(){ if(!LAST){ alert('Run analysis first'); return; } const rows = [['date','close','signal']]; for(let i=0;i<LAST.timestamps.length;i++){ let sig=''; if(LAST.buys.find(b=>b.i===i)) sig='BUY'; if(LAST.sells.find(s=>s.i===i)) sig='SELL'; rows.push([LAST.timestamps[i], LAST.close[i], sig]); } const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('
-'); const blob = new Blob([csv],{type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (LAST?.symbol||'signals') + '_signals.csv'; a.click(); }
-function calcPos(){ if(!LAST){ alert('Run analysis first'); return; } const acct = Number($('acctVal').value||100000); const riskPct = Number($('riskPct').value||1)/100; const price = LAST.lastPrice; const stop = LAST.stop || price*(1-0.02); const riskPerShare = Math.abs(price - stop); if(riskPerShare<=0){ $('posOut').textContent='Invalid stop/price'; return; } const qty = Math.floor((acct*riskPct)/riskPerShare); $('posOut').textContent = `Price: ${fmt(price)}
-Stop: ${fmt(stop)}
-Risk/share: ${fmt(riskPerShare)}
-Qty: ${qty}
-Notional: ${fmt(qty*price)}`; }
+function exportCSV(){ if(!LAST){ alert('Run analysis first'); return; } const rows = [['date','close','signal']]; for(let i=0;i<LAST.timestamps.length;i++){ let sig=''; if(LAST.buys.find(b=>b.i===i)) sig='BUY'; if(LAST.sells.find(s=>s.i===i)) sig='SELL'; rows.push([LAST.timestamps[i], LAST.close[i], sig]); } const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'); const blob = new Blob([csv],{type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (LAST?.symbol||'signals') + '_signals.csv'; a.click(); }
+function calcPos(){ if(!LAST){ alert('Run analysis first'); return; } const acct = Number($('acctVal').value||100000); const riskPct = Number($('riskPct').value||1)/100; const price = LAST.lastPrice; const stop = LAST.stop || price*(1-0.02); const riskPerShare = Math.abs(price - stop); if(riskPerShare<=0){ $('posOut').textContent='Invalid stop/price'; return; } const qty = Math.floor((acct*riskPct)/riskPerShare); $('posOut').textContent = `Price: ${fmt(price)}\nStop: ${fmt(stop)}\nRisk/share: ${fmt(riskPerShare)}\nQty: ${qty}\nNotional: ${fmt(qty*price)}`; }
 
 /* ---------- Scanner & Backtest ---------- */
-async function runScan(){ const list = $('scanList').value.split(/
-?
-/).map(s=>s.trim()).filter(Boolean); $('scanOut').textContent = 'Scanning...'; const out=[]; for(const s of list){ try{ const r = await analyzeSymbol(s,'1d'); const last=r.lastPrice; const upside = r.target2 ? ((r.target2-last)/last)*100 : 0; out.push({sym:s,price:last,upside}); }catch(e){ out.push({sym:s,price:null,upside:0}); }} out.sort((a,b)=>b.upside-a.upside); $('scanOut').innerHTML = out.map(x=> `<div><b>${x.sym}</b> — ${x.price?fmt(x.price):'N/A'} — Upside ${fmt(x.upside)}%</div>`).join(''); }
-function runBacktest(){ if(!LAST){ alert('Run analysis'); return; } const data=LAST.close, e21=LAST.ema21, e50=LAST.ema50; let cash=100000,pos=0,trades=[]; for(let i=1;i<data.length;i++){ if(e21[i] && e50[i] && e21[i]>e50[i] && data[i]>e21[i] && pos===0){ const atrEst = LAST.atr || Math.abs(LAST.lastPrice - LAST.stop) || data[i]*0.02; const stop = data[i]-atrEst*2; const riskPerShare = data[i]-stop; const qty = Math.floor((cash*0.01)/riskPerShare); if(qty>0){ pos=qty; cash -= qty*data[i]; trades.push({type:'BUY',price:data[i],qty,idx:i,stop}); } } if(pos>0){ const stop = trades[trades.length-1].stop; if(data[i] < stop){ cash += pos*data[i]; trades.push({type:'SELL',price:data[i],qty:pos,idx:i}); pos=0; } } } if(pos>0){ cash += pos * data[data.length-1]; trades.push({type:'SELL',price:data[data.length-1],qty:pos,idx:data.length-1}); pos=0; } const pnl = cash - 100000; $('backtestOut').innerHTML = `<pre>Trades: ${trades.length}
-P&L: ${fmt(pnl)}
-${JSON.stringify(trades,null,2)}</pre>`; }/* ---------- Telegram test ---------- */ async function testTelegram(){ const w = $('tgWebhook').value.trim(); if(!w) return alert('Paste Telegram webhook'); try{ await fetch(w, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text:Test alert from Swing Lab for ${$('symbol').value}})}); alert('Test sent'); }catch(e){ alert('Alert failed: '+e.message); } }
+async function runScan(){ const list = $('scanList').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); $('scanOut').textContent = 'Scanning...'; const out=[]; for(const s of list){ try{ const r = await analyzeSymbol(s,'1d'); const last=r.lastPrice; const upside = r.target2 ? ((r.target2-last)/last)*100 : 0; out.push({sym:s,price:last,upside}); }catch(e){ out.push({sym:s,price:null,upside:0}); }} out.sort((a,b)=>b.upside-a.upside); $('scanOut').innerHTML = out.map(x=> `<div><b>${x.sym}</b> — ${x.price?fmt(x.price):'N/A'} — Upside ${fmt(x.upside)}%</div>`).join(''); }
+function runBacktest(){ if(!LAST){ alert('Run analysis'); return; } const data=LAST.close, e21=LAST.ema21, e50=LAST.ema50; let cash=100000,pos=0,trades=[]; for(let i=1;i<data.length;i++){ if(e21[i] && e50[i] && e21[i]>e50[i] && data[i]>e21[i] && pos===0){ const atrEst = LAST.atr || Math.abs(LAST.lastPrice - LAST.stop) || data[i]*0.02; const stop = data[i]-atrEst*2; const riskPerShare = data[i]-stop; const qty = Math.floor((cash*0.01)/riskPerShare); if(qty>0){ pos=qty; cash -= qty*data[i]; trades.push({type:'BUY',price:data[i],qty,idx:i,stop}); } } if(pos>0){ const stop = trades[trades.length-1].stop; if(data[i] < stop){ cash += pos*data[i]; trades.push({type:'SELL',price:data[i],qty:pos,idx:i}); pos=0; } } } if(pos>0){ cash += pos * data[data.length-1]; trades.push({type:'SELL',price:data[data.length-1],qty:pos,idx:data.length-1}); pos=0; } const pnl = cash - 100000; $('backtestOut').innerHTML = `<pre>Trades: ${trades.length}\nP&L: ${fmt(pnl)}\n${JSON.stringify(trades,null,2)}</pre>`; }
 
-/* ---------- Blink toggle control ---------- */ let enableBlink = true; function toggleBlink(){ enableBlink = !enableBlink; const btn = $('blinkToggle'); btn.textContent = enableBlink ? 'Blink: ON' : 'Blink: OFF'; const status = $('blinkStatus'); status.textContent = enableBlink ? 'Blinking ON' : 'Blinking OFF'; const card = $('topPickCard'); if(enableBlink) card.classList.add('blink'); else card.classList.remove('blink'); } $('blinkToggle').addEventListener('click', toggleBlink);
+/* ---------- Telegram test ---------- */
+async function testTelegram(){ const w = $('tgWebhook').value.trim(); if(!w) return alert('Paste Telegram webhook'); try{ await fetch(w, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text:`Test alert from Swing Lab for ${$('symbol').value}`})}); alert('Test sent'); }catch(e){ alert('Alert failed: '+e.message); } }
 
-/* ---------- Wire UI ---------- */ $('computeTopBtn').addEventListener('click', ()=> computeTopPickAll()); $('analyzeBtn').addEventListener('click', analyzeSelected); $('refreshBtn').addEventListener('click', analyzeSelected); $('exportPNG').addEventListener('click', exportPNG); $('exportCSV').addEventListener('click', exportCSV); $('calcPos').addEventListener('click', calcPos); $('runScan').addEventListener('click', runScan); $('runBacktest').addEventListener('click', runBacktest); $('tgTest').addEventListener('click', testTelegram);
+/* ---------- Blink toggle control ---------- */
+function toggleBlink(){ enableBlink = !enableBlink; const btn = $('blinkToggle'); btn.textContent = enableBlink ? 'Blink: ON' : 'Blink: OFF'; const status = $('blinkStatus'); status.textContent = enableBlink ? 'Blinking ON' : 'Blinking OFF'; const card = $('topPickCard'); if(enableBlink) card.classList.add('blink'); else card.classList.remove('blink'); }
+$('blinkToggle').addEventListener('click', toggleBlink);
 
-/* ---------- <!-- Auto refresh removed --> let AUTO_TIMER = null; function startAuto(){ if(AUTO_TIMER) clearInterval(AUTO_TIMER); const sec = Math.max(5, Number($('intervalSec').value) || 10); AUTO_TIMER = setInterval(()=> { computeTopPickAll().catch(()=>{}); }, sec*1000); $('autoChk').checked = true; } function stopAuto(){ if(AUTO_TIMER) clearInterval(AUTO_TIMER); AUTO_TIMER = null; $('autoChk').checked = false; } $('autoChk').addEventListener('change', (e)=> { if(e.target.checked) startAuto(); else stopAuto(); });
+/* ---------- Wire UI ---------- */
+$('computeTopBtn').addEventListener('click', ()=> computeTopPickAll());
+$('analyzeBtn').addEventListener('click', analyzeSelected);
+$('refreshBtn').addEventListener('click', analyzeSelected);
+$('exportPNG').addEventListener('click', exportPNG);
+$('exportCSV').addEventListener('click', exportCSV);
+$('calcPos').addEventListener('click', calcPos);
+$('runScan').addEventListener('click', runScan);
+$('runBacktest').addEventListener('click', runBacktest);
+$('tgTest').addEventListener('click', testTelegram);
 
-/* ---------- Init on load ---------- / window.addEventListener('load', async ()=>{ populateSymbols(); const saved = localStorage.getItem('lastSym'); if(saved) $('symbol').value = saved; try{ const top = await computeTopPickAll(); if(top){ / already highlighted */ } }catch(e){ console.warn('topPick compute failed on load', e); } if($('autoChk').checked) startAuto(); });
+/* ---------- Initialization (manual mode) ---------- */
+window.addEventListener('load', async ()=>{
+  populateSymbols();
+  const saved = localStorage.getItem('lastSym');
+  if(saved) $('symbol').value = saved;
+  // Do NOT auto-run computeTop or auto-refresh — manual only
+  $('compareOut').textContent = 'Press Compute Top Pick to scan all symbols.';
+  // quick proxy health check (already called earlier)
+});
 
-/* ---------- Cleanup ---------- */ window.addEventListener('beforeunload', ()=> stopAuto()); </script>
-
-<div id='proxyHealth'>Proxy: checking...</div>
-<script>
-// proxy health indicator code placeholder
+/* ---------- End ---------- */
 </script>
 </body>
 </html>
