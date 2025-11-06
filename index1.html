@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Indian Swing Trader — NSE (.NS)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#ffffff;--muted:#334155;--accent:#0ea5a4}
+  body{font-family:Inter,system-ui,Arial;margin:12px;background:var(--bg);color:#06223a}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{margin:0;font-size:20px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  select,input,button{padding:8px;border-radius:8px;border:1px solid #e2e8f0}
+  button{background:var(--accent);color:white;border:none;cursor:pointer}
+  #chartCard{background:white;border-radius:10px;padding:10px;margin-top:12px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
+  #msg{margin-top:12px;color:#b91c1c}
+  @media (max-width:600px){ h1{font-size:18px} canvas{height:300px!important} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Indian Swing Trading Analyzer — NSE (.NS)</h1>
+    <div style="color:var(--muted);font-size:13px">Auto-run Tata Steel on load. No API keys required (uses Yahoo).</div>
+  </div>
+  <div style="margin-left:auto;font-size:13px;color:var(--muted)">Default: <strong>TATASTEEL.NS</strong></div>
+</header>
+
+<div class="row">
+  <label for="symbol">Symbol</label>
+  <select id="symbol" aria-label="symbol"></select>
+
+  <label for="tf">Timeframe</label>
+  <select id="tf">
+    <option value="1d" selected>Daily</option>
+    <option value="1wk">Weekly</option>
+    <option value="1mo">Monthly</option>
+  </select>
+
+  <button id="analyze">Analyze</button>
+  <button id="topPicks">Top Picks</button>
+</div>
+
+<div id="chartCard">
+  <canvas id="chart" style="width:100%;height:420px"></canvas>
+  <div id="summary" style="margin-top:10px;color:var(--muted)"></div>
+  <div id="msg"></div>
+</div>
+
+<script>
+/* ---------- Config (NSE .NS symbols) ---------- */
+const SYMBOLS = [
+  "TATASTEEL.NS",
+  "TATAMOTORS.NS",
+  "ONGC.NS",
+  "CDSL.NS",
+  "RELIANCE.NS",
+  "HDFCBANK.NS",
+  "ICICIBANK.NS",
+  "INFY.NS",
+  "TCS.NS",
+  "SBIN.NS",
+  "ADANIPORTS.NS",
+  "POWERGRID.NS",
+  "BHARTIARTL.NS"
+];
+const DEFAULT = "TATASTEEL.NS";
+
+/* ---------- Helpers ---------- */
+function el(id){ return document.getElementById(id); }
+function showMsg(t){ el('msg').textContent = t || ''; console.debug('MSG:', t); }
+function fmt(n){ return (typeof n === 'number') ? n.toFixed(2) : n; }
+
+/* ---------- Populate dropdown ---------- */
+function populateSymbols(){
+  const sel = el('symbol');
+  sel.innerHTML = '';
+  SYMBOLS.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s;
+    o.textContent = s.replace('.NS','');
+    if (s === DEFAULT) o.style.fontWeight = '700';
+    sel.appendChild(o);
+  });
+  sel.value = DEFAULT;
+}
+
+/* ---------- Fetch Yahoo (public) ---------- */
+async function fetchYahoo(symbol, range='6mo', interval='1d'){
+  // Yahoo endpoint (public)
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const j = await res.json();
+  if(!j || !j.chart || !j.chart.result) throw new Error('No data result');
+  return j.chart.result[0];
+}
+
+/* ---------- Simple indicators ---------- */
+function ema(values, period){
+  const out=[]; const k = 2/(period+1);
+  for(let i=0;i<values.length;i++){
+    if(i===0) out.push(values[0]);
+    else out.push(values[i]*k + out[i-1]*(1-k));
+  }
+  for(let i=0;i<period-1 && i<out.length;i++) out[i] = null;
+  return out;
+}
+
+/* ---------- Draw Chart ---------- */
+let CHART = null;
+function drawChart(dates, price, ema21, ema50, buys=[], sells=[]){
+  const ctx = el('chart').getContext('2d');
+  if(CHART) CHART.destroy();
+  const datasets = [
+    { label: 'Close', data: price, borderColor:'#ef4444', tension:0.2, pointRadius:0 },
+  ];
+  if(ema21) datasets.push({label:'EMA21', data:ema21, borderColor:'#10b981', pointRadius:0});
+  if(ema50) datasets.push({label:'EMA50', data:ema50, borderColor:'#2563eb', pointRadius:0});
+  // scatter buys/sells
+  datasets.push({ label:'Buys', data: buys.map(b=>({x:b.date,y:b.price})), showLine:false, pointBackgroundColor:'#10b981', pointRadius:6, parsing:{xAxisKey:'x',yAxisKey:'y'}});
+  datasets.push({ label:'Sells', data: sells.map(s=>({x:s.date,y:s.price})), showLine:false, pointBackgroundColor:'#ef4444', pointRadius:6, parsing:{xAxisKey:'x',yAxisKey:'y'}});
+  CHART = new Chart(ctx, {
+    type: 'line', data: { labels: dates, datasets },
+    options: { interaction:{mode:'index',intersect:false}, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:false}} }
+  });
+}
+
+/* ---------- Analyze flow ---------- */
+async function analyze(){
+  showMsg('');
+  const symbol = el('symbol').value;
+  const tf = el('tf').value;
+  const range = (tf==='1d') ? '6mo' : (tf==='1wk' ? '2y' : '5y');
+  const interval = (tf==='1d') ? '1d' : (tf==='1wk' ? '1wk' : '1mo');
+  el('summary').textContent = 'Loading...';
+  console.debug('Fetching', symbol, range, interval);
+  try{
+    const raw = await fetchYahoo(symbol, range, interval);
+    const timestamps = raw.timestamp || [];
+    const quote = raw.indicators && raw.indicators.quote && raw.indicators.quote[0];
+    if(!quote || !quote.close) throw new Error('No quote data');
+    const closes = quote.close;
+    const highs = quote.high || [];
+    const lows = quote.low || [];
+    // dates friendly
+    const dates = timestamps.map(t => new Date(t*1000).toLocaleDateString());
+    // compute ema
+    const e21 = ema(closes,21);
+    const e50 = ema(closes,50);
+    // identify simple buy marker: price crosses above ema21
+    const buys=[], sells=[];
+    for(let i=1;i<closes.length;i++){
+      if(e21[i] && e21[i-1] && closes[i-1] <= e21[i-1] && closes[i] > e21[i]) buys.push({i, date:dates[i], price:closes[i]});
+      if(e21[i] && e21[i-1] && closes[i-1] >= e21[i-1] && closes[i] < e21[i]) sells.push({i, date:dates[i], price:closes[i]});
+    }
+    // draw
+    drawChart(dates, closes, e21, e50, buys.slice(-5), sells.slice(-5));
+    // evaluate last bar for quick suggestion
+    const last = closes[closes.length-1], lastE21 = e21[e21.length-1], lastE50 = e50[e50.length-1];
+    let action = 'HOLD', reasons = [];
+    if(lastE21 && lastE50 && last > lastE21 && lastE21 > lastE50) { action = 'BUY'; reasons.push('Price above EMA21 and EMA21>EMA50'); }
+    if(lastE21 && last < lastE21) { action = 'SELL'; reasons.push('Price below EMA21'); }
+    if(buys.length && buys[buys.length-1].i === closes.length-1) { action = 'STRONG BUY'; reasons.push('Recent EMA21 breakout'); }
+    // show summary
+    el('summary').innerHTML = `<b>${symbol}</b> — Last: ${fmt(last)} · Action: <strong>${action}</strong><br>${reasons.join(' · ') || 'No special conditions met.'}`;
+    showMsg('');
+    console.debug('analysis done', {symbol, action, buys:sliceTo(buys,5), sells:sliceTo(sells,5)});
+  }catch(err){
+    console.error(err);
+    showMsg('Error fetching or parsing data: ' + err.message + ' — try opening via Live Server / GitHub Pages.');
+    el('summary').textContent = 'No data';
+  }
+}
+
+/* ---------- Utility ---------- */
+function sliceTo(arr,n){ return arr.slice(Math.max(0, arr.length-n)); }
+
+/* ---------- Top Picks (quick) ---------- */
+async function topPicks(){
+  showMsg('');
+  el('summary').textContent = 'Computing top picks (quick)…';
+  try{
+    const results = [];
+    for(const s of SYMBOLS){
+      try{
+        const raw = await fetchYahoo(s,'3mo','1d');
+        const close = raw.indicators.quote[0].close;
+        const last = close[close.length-1];
+        results.push({sym:s, last});
+      }catch(e){ console.warn('skip',s,e.message); }
+    }
+    results.sort((a,b)=> (b.last||0) - (a.last||0));
+    el('summary').innerHTML = `<b>Top picks (by latest price):</b><br>` + results.slice(0,6).map(r=> `${r.sym} — ${fmt(r.last)}`).join('<br>');
+  }catch(e){
+    showMsg('Top picks failed: '+e.message);
+  }
+}
+
+/* ---------- Init UI ---------- */
+populateSymbols();
+el('analyze').addEventListener('click', analyze);
+el('topPicks').addEventListener('click', topPicks);
+
+// Auto-run default on load (with small delay to allow UI)
+window.addEventListener('load', ()=> {
+  setTimeout(()=> { try{ analyze(); } catch(e) { console.warn(e); } }, 200);
+});
+
+</script>
+</body>
+</html>
